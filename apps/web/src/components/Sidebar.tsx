@@ -2,6 +2,7 @@ import {
   ArchiveIcon,
   ArrowUpDownIcon,
   ChevronRightIcon,
+  ChevronsDownUpIcon,
   CloudIcon,
   GitPullRequestIcon,
   PlusIcon,
@@ -933,6 +934,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const router = useRouter();
   const markThreadUnread = useUiStateStore((state) => state.markThreadUnread);
   const toggleProject = useUiStateStore((state) => state.toggleProject);
+  const collapseAllProjects = useUiStateStore((state) => state.collapseAllProjects);
   const toggleThreadSelection = useThreadSelectionStore((state) => state.toggleThread);
   const rangeSelectTo = useThreadSelectionStore((state) => state.rangeSelectTo);
   const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
@@ -1234,6 +1236,18 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       toggleProject(project.projectKey);
     },
     [dragInProgressRef, project.projectKey, toggleProject],
+  );
+
+  const handleProjectChevronClickCapture = useCallback(
+    (event: React.MouseEvent<HTMLSpanElement>) => {
+      if (!event.altKey) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      collapseAllProjects();
+    },
+    [collapseAllProjects],
   );
 
   const handleProjectButtonPointerDownCapture = useCallback(
@@ -1964,6 +1978,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
               aria-hidden="true"
               title={projectStatus.label}
               className={`-ml-0.5 relative inline-flex size-3.5 shrink-0 items-center justify-center ${projectStatus.colorClass}`}
+              onClickCapture={handleProjectChevronClickCapture}
             >
               <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-150 group-hover/project-header:opacity-0">
                 <span
@@ -1975,11 +1990,13 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
               <ChevronRightIcon className="absolute inset-0 m-auto size-3.5 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-hover/project-header:opacity-100" />
             </span>
           ) : (
-            <ChevronRightIcon
-              className={`-ml-0.5 size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
-                projectExpanded ? "rotate-90" : ""
-              }`}
-            />
+            <span className="contents" onClickCapture={handleProjectChevronClickCapture}>
+              <ChevronRightIcon
+                className={`-ml-0.5 size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
+                  projectExpanded ? "rotate-90" : ""
+                }`}
+              />
+            </span>
           )}
           <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
           <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -2519,6 +2536,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
     },
     [updateSettings],
   );
+  const collapseAllProjects = useUiStateStore((state) => state.collapseAllProjects);
 
   return (
     <SidebarContent className="gap-0">
@@ -2582,6 +2600,22 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
               onThreadSortOrderChange={handleThreadSortOrderChange}
               onProjectGroupingModeChange={handleProjectGroupingModeChange}
             />
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label="Collapse all projects"
+                    data-testid="sidebar-collapse-all-trigger"
+                    className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+                    onClick={collapseAllProjects}
+                  />
+                }
+              >
+                <ChevronsDownUpIcon className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipPopup side="right">Collapse all projects</TooltipPopup>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger
                 render={

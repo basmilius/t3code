@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearThreadUi,
+  collapseAllProjects,
   hydratePersistedProjectState,
   markThreadUnread,
   PERSISTED_STATE_KEY,
@@ -360,6 +361,75 @@ describe("uiStateStore pure functions", () => {
     expect(next.projectOrder).toEqual([project1]);
   });
 
+  it("collapseAllProjects flips every known project to collapsed", () => {
+    const project1 = ProjectId.make("project-1");
+    const project2 = ProjectId.make("project-2");
+    const project3 = ProjectId.make("project-3");
+    const initialState = makeUiState({
+      projectExpandedById: {
+        [project1]: true,
+        [project2]: false,
+        [project3]: true,
+      },
+      projectOrder: [project1, project2, project3],
+    });
+
+    const next = collapseAllProjects(initialState);
+
+    expect(next.projectExpandedById).toEqual({
+      [project1]: false,
+      [project2]: false,
+      [project3]: false,
+    });
+    expect(next.projectOrder).toEqual([project1, project2, project3]);
+  });
+
+  it("collapseAllProjects leaves thread state untouched", () => {
+    const project1 = ProjectId.make("project-1");
+    const thread1 = ThreadId.make("thread-1");
+    const initialState = makeUiState({
+      projectExpandedById: {
+        [project1]: true,
+      },
+      threadLastVisitedAtById: {
+        [thread1]: "2026-02-25T12:35:00.000Z",
+      },
+      threadChangedFilesExpandedById: {
+        [thread1]: {
+          "turn-1": false,
+        },
+      },
+    });
+
+    const next = collapseAllProjects(initialState);
+
+    expect(next.threadLastVisitedAtById).toBe(initialState.threadLastVisitedAtById);
+    expect(next.threadChangedFilesExpandedById).toBe(initialState.threadChangedFilesExpandedById);
+  });
+
+  it("collapseAllProjects is a no-op when everything is already collapsed", () => {
+    const project1 = ProjectId.make("project-1");
+    const project2 = ProjectId.make("project-2");
+    const initialState = makeUiState({
+      projectExpandedById: {
+        [project1]: false,
+        [project2]: false,
+      },
+    });
+
+    const next = collapseAllProjects(initialState);
+
+    expect(next).toBe(initialState);
+  });
+
+  it("collapseAllProjects is a no-op when there are no known projects", () => {
+    const initialState = makeUiState();
+
+    const next = collapseAllProjects(initialState);
+
+    expect(next).toBe(initialState);
+  });
+
   it("clearThreadUi removes visit state for deleted threads", () => {
     const thread1 = ThreadId.make("thread-1");
     const initialState = makeUiState({
@@ -529,6 +599,35 @@ describe("uiStateStore persistence round-trip", () => {
     const rehydrated = syncProjects(makeUiState(), [projectA, projectB, projectC]);
 
     expect(rehydrated.projectOrder).toEqual([projectC.key, projectA.key, projectB.key]);
+  });
+
+  it("collapseAllProjects writes every known cwd to collapsedProjectCwds on persist", () => {
+    const projectA = { key: "kA", logicalKey: "kA", cwd: "/projA" };
+    const projectB = { key: "kB", logicalKey: "kB", cwd: "/projB" };
+    const projectC = { key: "kC", logicalKey: "kC", cwd: "/projC" };
+
+    let state = syncProjects(makeUiState(), [projectA, projectB, projectC]);
+    state = setProjectExpanded(state, projectB.key, false);
+    state = collapseAllProjects(state);
+    persistState(state);
+
+    const persisted = JSON.parse(
+      localStorageStub.getItem(PERSISTED_STATE_KEY) ?? "{}",
+    ) as PersistedUiState;
+
+    expect(persisted.collapsedProjectCwds?.toSorted()).toEqual(
+      [projectA.cwd, projectB.cwd, projectC.cwd].toSorted(),
+    );
+    expect(persisted.expandedProjectCwds ?? []).toEqual([]);
+
+    hydratePersistedProjectState(persisted);
+    const rehydrated = syncProjects(makeUiState(), [projectA, projectB, projectC]);
+
+    expect(rehydrated.projectExpandedById).toEqual({
+      [projectA.key]: false,
+      [projectB.key]: false,
+      [projectC.key]: false,
+    });
   });
 
   it("preserves expand state across restart when project's logical key changes", () => {
