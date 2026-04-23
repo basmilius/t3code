@@ -10,6 +10,7 @@ import {
   resolveDefaultDesktopSettings,
   setDesktopServerExposurePreference,
   setDesktopUpdateChannelPreference,
+  setDesktopWindowSize,
   writeDesktopSettings,
 } from "./desktopSettings.ts";
 
@@ -143,5 +144,89 @@ describe("desktopSettings", () => {
       updateChannel: "latest",
       updateChannelConfiguredByUser: true,
     });
+  });
+
+  it("round-trips a persisted window size", () => {
+    const settingsPath = makeSettingsPath();
+
+    writeDesktopSettings(settingsPath, {
+      serverExposureMode: "local-only",
+      updateChannel: "latest",
+      updateChannelConfiguredByUser: false,
+      windowSize: { width: 1440, height: 900 },
+    });
+
+    expect(readDesktopSettings(settingsPath, "0.0.17")).toEqual({
+      serverExposureMode: "local-only",
+      updateChannel: "latest",
+      updateChannelConfiguredByUser: false,
+      windowSize: { width: 1440, height: 900 },
+    });
+  });
+
+  it("omits windowSize when settings were written without one", () => {
+    const settingsPath = makeSettingsPath();
+
+    writeDesktopSettings(settingsPath, {
+      serverExposureMode: "local-only",
+      updateChannel: "latest",
+      updateChannelConfiguredByUser: false,
+    });
+
+    const result = readDesktopSettings(settingsPath, "0.0.17");
+    expect(result.windowSize).toBeUndefined();
+  });
+
+  it.each([
+    { label: "not an object", value: "1200x800" },
+    { label: "null", value: null },
+    { label: "missing height", value: { width: 1200 } },
+    { label: "non-numeric width", value: { width: "1200", height: 800 } },
+    { label: "non-finite width", value: { width: Number.POSITIVE_INFINITY, height: 800 } },
+    { label: "non-finite height", value: { width: 1200, height: Number.NaN } },
+    { label: "negative width", value: { width: -1200, height: 800 } },
+    { label: "zero height", value: { width: 1200, height: 0 } },
+  ])("discards a malformed windowSize ($label)", ({ value }) => {
+    const settingsPath = makeSettingsPath();
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({
+        serverExposureMode: "local-only",
+        updateChannel: "latest",
+        updateChannelConfiguredByUser: false,
+        windowSize: value,
+      }),
+      "utf8",
+    );
+
+    expect(readDesktopSettings(settingsPath, "0.0.17").windowSize).toBeUndefined();
+  });
+
+  it("adds a windowSize via setDesktopWindowSize", () => {
+    expect(
+      setDesktopWindowSize(
+        {
+          serverExposureMode: "local-only",
+          updateChannel: "latest",
+          updateChannelConfiguredByUser: false,
+        },
+        { width: 1280, height: 820 },
+      ),
+    ).toEqual({
+      serverExposureMode: "local-only",
+      updateChannel: "latest",
+      updateChannelConfiguredByUser: false,
+      windowSize: { width: 1280, height: 820 },
+    });
+  });
+
+  it("returns the same reference when the windowSize is unchanged", () => {
+    const settings = {
+      serverExposureMode: "local-only" as const,
+      updateChannel: "latest" as const,
+      updateChannelConfiguredByUser: false,
+      windowSize: { width: 1280, height: 820 },
+    };
+    expect(setDesktopWindowSize(settings, { width: 1280, height: 820 })).toBe(settings);
   });
 });

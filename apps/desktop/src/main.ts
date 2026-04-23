@@ -42,6 +42,7 @@ import {
   readDesktopSettings,
   setDesktopServerExposurePreference,
   setDesktopUpdateChannelPreference,
+  setDesktopWindowSize,
   writeDesktopSettings,
 } from "./desktopSettings.ts";
 import {
@@ -76,6 +77,7 @@ import {
 import { isArm64HostRunningIntelBuild, resolveDesktopRuntimeInfo } from "./runtimeArch.ts";
 import { resolveDesktopAppBranding } from "./appBranding.ts";
 import { bindFirstRevealTrigger, type RevealSubscription } from "./windowReveal.ts";
+import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, resolveInitialWindowSize } from "./windowBounds.ts";
 
 syncShellEnvironment();
 
@@ -1918,12 +1920,15 @@ function syncAllWindowAppearance(): void {
 
 nativeTheme.on("updated", syncAllWindowAppearance);
 
+const WINDOW_SIZE_PERSIST_DEBOUNCE_MS = 500;
+
 function createWindow(): BrowserWindow {
+  const initialSize = resolveInitialWindowSize(desktopSettings.windowSize);
   const window = new BrowserWindow({
-    width: 1100,
-    height: 780,
-    minWidth: 840,
-    minHeight: 620,
+    width: initialSize.width,
+    height: initialSize.height,
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: MIN_WINDOW_HEIGHT,
     show: false,
     autoHideMenuBar: true,
     backgroundColor: getInitialWindowBackgroundColor(),
@@ -1937,6 +1942,46 @@ function createWindow(): BrowserWindow {
       sandbox: true,
     },
   });
+
+  let pendingSizePersistTimer: ReturnType<typeof setTimeout> | null = null;
+  const persistWindowSize = () => {
+    pendingSizePersistTimer = null;
+    if (window.isDestroyed()) {
+      return;
+    }
+    const size = window.getSize();
+    const width = size[0];
+    const height = size[1];
+    if (width === undefined || height === undefined) {
+      return;
+    }
+    const nextSettings = setDesktopWindowSize(desktopSettings, { width, height });
+    if (nextSettings === desktopSettings) {
+      return;
+    }
+    desktopSettings = nextSettings;
+    try {
+      writeDesktopSettings(DESKTOP_SETTINGS_PATH, desktopSettings);
+    } catch (error) {
+      console.warn("[desktop] failed to persist window size", error);
+    }
+  };
+  const scheduleWindowSizePersist = () => {
+    if (pendingSizePersistTimer !== null) {
+      clearTimeout(pendingSizePersistTimer);
+    }
+    pendingSizePersistTimer = setTimeout(persistWindowSize, WINDOW_SIZE_PERSIST_DEBOUNCE_MS);
+  };
+  const flushWindowSizePersist = () => {
+    if (pendingSizePersistTimer !== null) {
+      clearTimeout(pendingSizePersistTimer);
+      pendingSizePersistTimer = null;
+      persistWindowSize();
+    }
+  };
+
+  window.on("resize", scheduleWindowSizePersist);
+  window.on("close", flushWindowSizePersist);
 
   window.webContents.on("context-menu", (event, params) => {
     event.preventDefault();

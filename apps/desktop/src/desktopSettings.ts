@@ -4,10 +4,16 @@ import type { DesktopServerExposureMode, DesktopUpdateChannel } from "@t3tools/c
 
 import { resolveDefaultDesktopUpdateChannel } from "./updateChannels.ts";
 
+export interface DesktopWindowSize {
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface DesktopSettings {
   readonly serverExposureMode: DesktopServerExposureMode;
   readonly updateChannel: DesktopUpdateChannel;
   readonly updateChannelConfiguredByUser: boolean;
+  readonly windowSize?: DesktopWindowSize;
 }
 
 export const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
@@ -46,6 +52,44 @@ export function setDesktopUpdateChannelPreference(
   };
 }
 
+export function setDesktopWindowSize(
+  settings: DesktopSettings,
+  size: DesktopWindowSize,
+): DesktopSettings {
+  if (
+    settings.windowSize !== undefined &&
+    settings.windowSize.width === size.width &&
+    settings.windowSize.height === size.height
+  ) {
+    return settings;
+  }
+  return {
+    ...settings,
+    windowSize: {
+      width: size.width,
+      height: size.height,
+    },
+  };
+}
+
+function parseWindowSize(candidate: unknown): DesktopWindowSize | undefined {
+  if (typeof candidate !== "object" || candidate === null) {
+    return undefined;
+  }
+  const { width, height } = candidate as { readonly width?: unknown; readonly height?: unknown };
+  if (
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return undefined;
+  }
+  return { width, height };
+}
+
 export function readDesktopSettings(settingsPath: string, appVersion: string): DesktopSettings {
   const defaultSettings = resolveDefaultDesktopSettings(appVersion);
 
@@ -59,6 +103,7 @@ export function readDesktopSettings(settingsPath: string, appVersion: string): D
       readonly serverExposureMode?: unknown;
       readonly updateChannel?: unknown;
       readonly updateChannelConfiguredByUser?: unknown;
+      readonly windowSize?: unknown;
     };
     const parsedUpdateChannel =
       parsed.updateChannel === "nightly" || parsed.updateChannel === "latest"
@@ -68,8 +113,9 @@ export function readDesktopSettings(settingsPath: string, appVersion: string): D
     const updateChannelConfiguredByUser =
       parsed.updateChannelConfiguredByUser === true ||
       (isLegacySettings && parsedUpdateChannel === "nightly");
+    const windowSize = parseWindowSize(parsed.windowSize);
 
-    return {
+    const resolvedSettings: DesktopSettings = {
       serverExposureMode:
         parsed.serverExposureMode === "network-accessible" ? "network-accessible" : "local-only",
       updateChannel:
@@ -77,7 +123,10 @@ export function readDesktopSettings(settingsPath: string, appVersion: string): D
           ? parsedUpdateChannel
           : defaultSettings.updateChannel,
       updateChannelConfiguredByUser,
+      ...(windowSize === undefined ? {} : { windowSize }),
     };
+
+    return resolvedSettings;
   } catch {
     return defaultSettings;
   }
