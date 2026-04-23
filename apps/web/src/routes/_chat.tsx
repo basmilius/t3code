@@ -101,6 +101,9 @@ function ChatRouteGlobalShortcuts() {
   // otherwise trip the `event.defaultPrevented` guard above).
   useEffect(() => {
     const onWindowKeyDownCapture = (event: KeyboardEvent) => {
+      if (useCommandPaletteStore.getState().open) {
+        return;
+      }
       const command = resolveShortcutCommand(event, keybindings, {
         context: {
           terminalFocus: isTerminalFocused(),
