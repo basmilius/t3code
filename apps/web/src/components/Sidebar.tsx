@@ -2468,6 +2468,8 @@ interface SidebarProjectsContentProps {
   suppressProjectClickForContextMenuRef: React.RefObject<boolean>;
   attachProjectListAutoAnimateRef: (node: HTMLElement | null) => void;
   projectsLength: number;
+  allProjectsCollapsed: boolean;
+  collapseAllProjects: () => void;
 }
 
 const SidebarProjectsContent = memo(function SidebarProjectsContent(
@@ -2508,6 +2510,8 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
     suppressProjectClickForContextMenuRef,
     attachProjectListAutoAnimateRef,
     projectsLength,
+    allProjectsCollapsed,
+    collapseAllProjects,
   } = props;
 
   const handleProjectSortOrderChange = useCallback(
@@ -2528,7 +2532,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
     },
     [updateSettings],
   );
-  const collapseAllProjects = useUiStateStore((state) => state.collapseAllProjects);
 
   return (
     <SidebarContent className="gap-0">
@@ -2599,7 +2602,8 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
                     type="button"
                     aria-label="Collapse all projects"
                     data-testid="sidebar-collapse-all-trigger"
-                    className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+                    disabled={allProjectsCollapsed}
+                    className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground/60"
                     onClick={collapseAllProjects}
                   />
                 }
@@ -2716,6 +2720,7 @@ export default function Sidebar() {
   const projectExpandedById = useUiStateStore((store) => store.projectExpandedById);
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
+  const collapseAllProjectsAction = useUiStateStore((store) => store.collapseAllProjects);
   const navigate = useNavigate();
   const pathname = useLocation({ select: (loc) => loc.pathname });
   const isOnSettings = pathname.startsWith("/settings");
@@ -2993,6 +2998,13 @@ export default function Sidebar() {
     visibleThreads,
   ]);
   const isManualProjectSorting = sidebarProjectSortOrder === "manual";
+  const allProjectsCollapsed = useMemo(
+    () =>
+      sortedProjects.every(
+        (project) => (projectExpandedById[project.projectKey] ?? true) === false,
+      ),
+    [projectExpandedById, sortedProjects],
+  );
   const visibleSidebarThreadKeys = useMemo(
     () =>
       sortedProjects.flatMap((project) => {
@@ -3377,6 +3389,8 @@ export default function Sidebar() {
             suppressProjectClickForContextMenuRef={suppressProjectClickForContextMenuRef}
             attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
             projectsLength={projects.length}
+            allProjectsCollapsed={allProjectsCollapsed}
+            collapseAllProjects={collapseAllProjectsAction}
           />
 
           <SidebarSeparator />
