@@ -42,6 +42,7 @@ import {
   readDesktopSettings,
   setDesktopServerExposurePreference,
   setDesktopUpdateChannelPreference,
+  setDesktopWindowDisplayState,
   setDesktopWindowSize,
   writeDesktopSettings,
 } from "./desktopSettings.ts";
@@ -1944,9 +1945,23 @@ function createWindow(): BrowserWindow {
   });
 
   let pendingSizePersistTimer: ReturnType<typeof setTimeout> | null = null;
+  const writeDesktopSettingsSafely = (reason: string) => {
+    try {
+      writeDesktopSettings(DESKTOP_SETTINGS_PATH, desktopSettings);
+    } catch (error) {
+      console.warn(`[desktop] failed to persist ${reason}`, error);
+    }
+  };
   const persistWindowSize = () => {
     pendingSizePersistTimer = null;
     if (window.isDestroyed()) {
+      return;
+    }
+    // Skip persisting while the window is maximized or in fullscreen: the
+    // reported bounds then equal the display size, and on restart we'd build
+    // a non-maximized window that merely matches the screen. The current
+    // "normal" size is already stored from an earlier resize.
+    if (window.isMaximized() || window.isFullScreen()) {
       return;
     }
     const size = window.getSize();
@@ -1960,11 +1975,7 @@ function createWindow(): BrowserWindow {
       return;
     }
     desktopSettings = nextSettings;
-    try {
-      writeDesktopSettings(DESKTOP_SETTINGS_PATH, desktopSettings);
-    } catch (error) {
-      console.warn("[desktop] failed to persist window size", error);
-    }
+    writeDesktopSettingsSafely("window size");
   };
   const scheduleWindowSizePersist = () => {
     if (pendingSizePersistTimer !== null) {
@@ -1979,9 +1990,36 @@ function createWindow(): BrowserWindow {
       persistWindowSize();
     }
   };
+  const persistWindowDisplayState = () => {
+    if (window.isDestroyed()) {
+      return;
+    }
+    const nextSettings = setDesktopWindowDisplayState(desktopSettings, {
+      maximized: window.isMaximized(),
+      fullscreen: window.isFullScreen(),
+    });
+    if (nextSettings === desktopSettings) {
+      return;
+    }
+    desktopSettings = nextSettings;
+    writeDesktopSettingsSafely("window display state");
+  };
 
   window.on("resize", scheduleWindowSizePersist);
   window.on("close", flushWindowSizePersist);
+  window.on("maximize", persistWindowDisplayState);
+  window.on("unmaximize", persistWindowDisplayState);
+  window.on("enter-full-screen", persistWindowDisplayState);
+  window.on("leave-full-screen", persistWindowDisplayState);
+
+  // Restore the previous display state before reveal so the window never
+  // flashes in its normal size first. Fullscreen takes precedence over
+  // maximize when both flags happen to be stored.
+  if (desktopSettings.windowFullscreen === true) {
+    window.setFullScreen(true);
+  } else if (desktopSettings.windowMaximized === true) {
+    window.maximize();
+  }
 
   window.webContents.on("context-menu", (event, params) => {
     event.preventDefault();

@@ -10,6 +10,7 @@ import {
   resolveDefaultDesktopSettings,
   setDesktopServerExposurePreference,
   setDesktopUpdateChannelPreference,
+  setDesktopWindowDisplayState,
   setDesktopWindowSize,
   writeDesktopSettings,
 } from "./desktopSettings.ts";
@@ -228,5 +229,90 @@ describe("desktopSettings", () => {
       windowSize: { width: 1280, height: 820 },
     };
     expect(setDesktopWindowSize(settings, { width: 1280, height: 820 })).toBe(settings);
+  });
+
+  it("round-trips windowMaximized and windowFullscreen flags", () => {
+    const settingsPath = makeSettingsPath();
+
+    writeDesktopSettings(settingsPath, {
+      serverExposureMode: "local-only",
+      updateChannel: "latest",
+      updateChannelConfiguredByUser: false,
+      windowMaximized: true,
+      windowFullscreen: false,
+    });
+
+    expect(readDesktopSettings(settingsPath, "0.0.17")).toEqual({
+      serverExposureMode: "local-only",
+      updateChannel: "latest",
+      updateChannelConfiguredByUser: false,
+      windowMaximized: true,
+      windowFullscreen: false,
+    });
+  });
+
+  it.each([
+    { label: "string", value: "true" },
+    { label: "number", value: 1 },
+    { label: "null", value: null },
+    { label: "object", value: {} },
+  ])("discards a malformed windowMaximized ($label)", ({ value }) => {
+    const settingsPath = makeSettingsPath();
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify({
+        serverExposureMode: "local-only",
+        updateChannel: "latest",
+        updateChannelConfiguredByUser: false,
+        windowMaximized: value,
+      }),
+      "utf8",
+    );
+
+    const result = readDesktopSettings(settingsPath, "0.0.17");
+    expect(result.windowMaximized).toBeUndefined();
+  });
+
+  it("adds window display state via setDesktopWindowDisplayState", () => {
+    expect(
+      setDesktopWindowDisplayState(
+        {
+          serverExposureMode: "local-only",
+          updateChannel: "latest",
+          updateChannelConfiguredByUser: false,
+        },
+        { maximized: true, fullscreen: false },
+      ),
+    ).toEqual({
+      serverExposureMode: "local-only",
+      updateChannel: "latest",
+      updateChannelConfiguredByUser: false,
+      windowMaximized: true,
+      windowFullscreen: false,
+    });
+  });
+
+  it("returns the same reference when display state is unchanged", () => {
+    const settings = {
+      serverExposureMode: "local-only" as const,
+      updateChannel: "latest" as const,
+      updateChannelConfiguredByUser: false,
+      windowMaximized: true,
+      windowFullscreen: false,
+    };
+    expect(setDesktopWindowDisplayState(settings, { maximized: true, fullscreen: false })).toBe(
+      settings,
+    );
+  });
+
+  it("treats undefined maximized/fullscreen as false when diffing", () => {
+    const settings = {
+      serverExposureMode: "local-only" as const,
+      updateChannel: "latest" as const,
+      updateChannelConfiguredByUser: false,
+    };
+    expect(setDesktopWindowDisplayState(settings, { maximized: false, fullscreen: false })).toBe(
+      settings,
+    );
   });
 });

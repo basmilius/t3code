@@ -9,11 +9,18 @@ export interface DesktopWindowSize {
   readonly height: number;
 }
 
+export interface DesktopWindowDisplayState {
+  readonly maximized: boolean;
+  readonly fullscreen: boolean;
+}
+
 export interface DesktopSettings {
   readonly serverExposureMode: DesktopServerExposureMode;
   readonly updateChannel: DesktopUpdateChannel;
   readonly updateChannelConfiguredByUser: boolean;
   readonly windowSize?: DesktopWindowSize;
+  readonly windowMaximized?: boolean;
+  readonly windowFullscreen?: boolean;
 }
 
 export const DEFAULT_DESKTOP_SETTINGS: DesktopSettings = {
@@ -72,6 +79,25 @@ export function setDesktopWindowSize(
   };
 }
 
+export function setDesktopWindowDisplayState(
+  settings: DesktopSettings,
+  displayState: DesktopWindowDisplayState,
+): DesktopSettings {
+  const currentMaximized = settings.windowMaximized ?? false;
+  const currentFullscreen = settings.windowFullscreen ?? false;
+  if (
+    currentMaximized === displayState.maximized &&
+    currentFullscreen === displayState.fullscreen
+  ) {
+    return settings;
+  }
+  return {
+    ...settings,
+    windowMaximized: displayState.maximized,
+    windowFullscreen: displayState.fullscreen,
+  };
+}
+
 function parseWindowSize(candidate: unknown): DesktopWindowSize | undefined {
   if (typeof candidate !== "object" || candidate === null) {
     return undefined;
@@ -90,6 +116,10 @@ function parseWindowSize(candidate: unknown): DesktopWindowSize | undefined {
   return { width, height };
 }
 
+function parseBooleanFlag(candidate: unknown): boolean | undefined {
+  return typeof candidate === "boolean" ? candidate : undefined;
+}
+
 export function readDesktopSettings(settingsPath: string, appVersion: string): DesktopSettings {
   const defaultSettings = resolveDefaultDesktopSettings(appVersion);
 
@@ -104,6 +134,8 @@ export function readDesktopSettings(settingsPath: string, appVersion: string): D
       readonly updateChannel?: unknown;
       readonly updateChannelConfiguredByUser?: unknown;
       readonly windowSize?: unknown;
+      readonly windowMaximized?: unknown;
+      readonly windowFullscreen?: unknown;
     };
     const parsedUpdateChannel =
       parsed.updateChannel === "nightly" || parsed.updateChannel === "latest"
@@ -114,6 +146,8 @@ export function readDesktopSettings(settingsPath: string, appVersion: string): D
       parsed.updateChannelConfiguredByUser === true ||
       (isLegacySettings && parsedUpdateChannel === "nightly");
     const windowSize = parseWindowSize(parsed.windowSize);
+    const windowMaximized = parseBooleanFlag(parsed.windowMaximized);
+    const windowFullscreen = parseBooleanFlag(parsed.windowFullscreen);
 
     const resolvedSettings: DesktopSettings = {
       serverExposureMode:
@@ -124,6 +158,8 @@ export function readDesktopSettings(settingsPath: string, appVersion: string): D
           : defaultSettings.updateChannel,
       updateChannelConfiguredByUser,
       ...(windowSize === undefined ? {} : { windowSize }),
+      ...(windowMaximized === undefined ? {} : { windowMaximized }),
+      ...(windowFullscreen === undefined ? {} : { windowFullscreen }),
     };
 
     return resolvedSettings;
