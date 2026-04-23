@@ -1210,6 +1210,12 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         event.stopPropagation();
         return;
       }
+      if (event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        collapseAllProjects();
+        return;
+      }
       if (selectedThreadCount > 0) {
         clearSelection();
       }
@@ -1217,6 +1223,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     },
     [
       clearSelection,
+      collapseAllProjects,
       dragInProgressRef,
       project.projectKey,
       selectedThreadCount,
@@ -1236,18 +1243,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       toggleProject(project.projectKey);
     },
     [dragInProgressRef, project.projectKey, toggleProject],
-  );
-
-  const handleProjectChevronClickCapture = useCallback(
-    (event: React.MouseEvent<HTMLSpanElement>) => {
-      if (!event.altKey) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      collapseAllProjects();
-    },
-    [collapseAllProjects],
   );
 
   const handleProjectButtonPointerDownCapture = useCallback(
@@ -1978,7 +1973,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
               aria-hidden="true"
               title={projectStatus.label}
               className={`-ml-0.5 relative inline-flex size-3.5 shrink-0 items-center justify-center ${projectStatus.colorClass}`}
-              onClickCapture={handleProjectChevronClickCapture}
             >
               <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-150 group-hover/project-header:opacity-0">
                 <span
@@ -1990,13 +1984,11 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
               <ChevronRightIcon className="absolute inset-0 m-auto size-3.5 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-hover/project-header:opacity-100" />
             </span>
           ) : (
-            <span className="contents" onClickCapture={handleProjectChevronClickCapture}>
-              <ChevronRightIcon
-                className={`-ml-0.5 size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
-                  projectExpanded ? "rotate-90" : ""
-                }`}
-              />
-            </span>
+            <ChevronRightIcon
+              className={`-ml-0.5 size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
+                projectExpanded ? "rotate-90" : ""
+              }`}
+            />
           )}
           <ProjectFavicon environmentId={project.environmentId} cwd={project.cwd} />
           <span className="flex min-w-0 flex-1 items-center gap-2">
