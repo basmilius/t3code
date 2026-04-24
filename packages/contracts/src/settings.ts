@@ -41,6 +41,9 @@ export const ClientSettingsSchema = Schema.Struct({
       model: TrimmedNonEmptyString,
     }),
   ).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
+  rememberReasoningLevelPerModel: Schema.Boolean.pipe(
+    Schema.withDecodingDefault(Effect.succeed(false)),
+  ),
   sidebarProjectGroupingMode: SidebarProjectGroupingMode.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_SIDEBAR_PROJECT_GROUPING_MODE)),
   ),
@@ -130,6 +133,10 @@ export const ServerSettings = Schema.Struct({
         model: DEFAULT_GIT_TEXT_GENERATION_MODEL_BY_PROVIDER.codex,
       }),
     ),
+  ),
+
+  reasoningLevelByProviderModel: Schema.Record(TrimmedNonEmptyString, TrimmedNonEmptyString).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
   ),
 
   // Provider specific settings
@@ -226,6 +233,9 @@ export const ServerSettingsPatch = Schema.Struct({
   defaultThreadEnvMode: Schema.optionalKey(ThreadEnvMode),
   addProjectBaseDirectory: Schema.optionalKey(Schema.String),
   textGenerationModelSelection: Schema.optionalKey(ModelSelectionPatch),
+  reasoningLevelByProviderModel: Schema.optionalKey(
+    Schema.Record(TrimmedNonEmptyString, TrimmedNonEmptyString),
+  ),
   observability: Schema.optionalKey(
     Schema.Struct({
       otlpTracesUrl: Schema.optionalKey(Schema.String),
@@ -256,6 +266,7 @@ export const ClientSettingsPatch = Schema.Struct({
       }),
     ),
   ),
+  rememberReasoningLevelPerModel: Schema.optionalKey(Schema.Boolean),
   sidebarProjectGroupingMode: Schema.optionalKey(SidebarProjectGroupingMode),
   sidebarProjectGroupingOverrides: Schema.optionalKey(
     Schema.Record(TrimmedNonEmptyString, SidebarProjectGroupingMode),

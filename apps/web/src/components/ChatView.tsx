@@ -116,6 +116,8 @@ import { newCommandId, newDraftId, newMessageId, newThreadId } from "~/lib/utils
 import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
 import { useSettings } from "../hooks/useSettings";
 import { resolveAppModelSelection } from "../modelSelection";
+import { getRememberedReasoningLevel } from "../lib/reasoningLevelMemory";
+import { getProviderOptionDescriptors } from "@t3tools/shared/model";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { deriveLogicalProjectKeyFromSettings } from "../logicalProject";
 import {
@@ -3145,9 +3147,32 @@ export default function ChatView(props: ChatViewProps) {
         provider: resolvedProvider,
         model: resolvedModel,
       };
+      const rememberedLevel = settings.rememberReasoningLevelPerModel
+        ? getRememberedReasoningLevel(settings, resolvedProvider, resolvedModel)
+        : null;
+      let rememberedReasoningLevel: { descriptorId: string; value: string } | null = null;
+      if (rememberedLevel) {
+        const providerModels =
+          providerStatuses.find((candidate) => candidate.provider === resolvedProvider)?.models ??
+          [];
+        const caps = getProviderModelCapabilities(providerModels, resolvedModel, resolvedProvider);
+        const descriptors = getProviderOptionDescriptors({ caps });
+        const primarySelect = descriptors.find((descriptor) => descriptor.type === "select");
+        if (
+          primarySelect &&
+          primarySelect.type === "select" &&
+          primarySelect.options.some((option) => option.id === rememberedLevel)
+        ) {
+          rememberedReasoningLevel = {
+            descriptorId: primarySelect.id,
+            value: rememberedLevel,
+          };
+        }
+      }
       setComposerDraftModelSelection(
         scopeThreadRef(activeThread.environmentId, activeThread.id),
         nextModelSelection,
+        rememberedReasoningLevel ? { rememberedReasoningLevel } : undefined,
       );
       setStickyComposerModelSelection(nextModelSelection);
       scheduleComposerFocus();

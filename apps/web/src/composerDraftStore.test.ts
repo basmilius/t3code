@@ -1201,6 +1201,66 @@ describe("composerDraftStore setModelSelection", () => {
       modelSelection("codex", "gpt-5.3-codex"),
     );
   });
+
+  it("injects a remembered reasoning level when switching to a different model", () => {
+    const store = useComposerDraftStore.getState();
+
+    store.setModelSelection(
+      threadRef,
+      modelSelection("codex", "gpt-5.3-codex", { fastMode: true }),
+    );
+
+    store.setModelSelection(threadRef, modelSelection("codex", "gpt-5.4"), {
+      rememberedReasoningLevel: { descriptorId: "reasoningEffort", value: "xhigh" },
+    });
+
+    expect(draftFor(threadId, TEST_ENVIRONMENT_ID)?.modelSelectionByProvider.codex).toEqual(
+      modelSelection("codex", "gpt-5.4", {
+        fastMode: true,
+        reasoningEffort: "xhigh",
+      }),
+    );
+  });
+
+  it("overwrites an existing reasoning option on the target descriptor", () => {
+    const store = useComposerDraftStore.getState();
+
+    store.setModelSelection(
+      threadRef,
+      modelSelection("codex", "gpt-5.3-codex", {
+        reasoningEffort: "medium",
+        fastMode: false,
+      }),
+    );
+
+    store.setModelSelection(threadRef, modelSelection("codex", "gpt-5.4"), {
+      rememberedReasoningLevel: { descriptorId: "reasoningEffort", value: "high" },
+    });
+
+    expect(draftFor(threadId, TEST_ENVIRONMENT_ID)?.modelSelectionByProvider.codex).toEqual(
+      modelSelection("codex", "gpt-5.4", {
+        fastMode: false,
+        reasoningEffort: "high",
+      }),
+    );
+  });
+
+  it("leaves options untouched when the model has not changed", () => {
+    const store = useComposerDraftStore.getState();
+
+    store.setModelSelection(
+      threadRef,
+      modelSelection("codex", "gpt-5.4", { reasoningEffort: "medium" }),
+    );
+
+    store.setModelSelection(threadRef, modelSelection("codex", "gpt-5.4"), {
+      rememberedReasoningLevel: { descriptorId: "reasoningEffort", value: "high" },
+    });
+
+    expect(draftFor(threadId, TEST_ENVIRONMENT_ID)?.modelSelectionByProvider.codex).toEqual(
+      modelSelection("codex", "gpt-5.4", { reasoningEffort: "medium" }),
+    );
+  });
 });
 
 describe("composerDraftStore sticky composer settings", () => {

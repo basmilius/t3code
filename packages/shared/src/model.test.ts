@@ -13,6 +13,7 @@ import {
   getProviderOptionStringSelectionValue,
   isClaudeUltrathinkPrompt,
   normalizeModelSlug,
+  reasoningLevelMemoryKey,
   resolveModelSlugForProvider,
   resolveSelectableModel,
   trimOrNull,
@@ -104,6 +105,27 @@ describe("resolveSelectableModel", () => {
     expect(resolveSelectableModel("codex", "gpt-5.3-codex", options)).toBe("gpt-5.3-codex");
     expect(resolveSelectableModel("codex", "gpt-5.3 codex", options)).toBe("gpt-5.3-codex");
     expect(resolveSelectableModel("claudeAgent", "sonnet", options)).toBe("claude-sonnet-4-6");
+  });
+});
+
+describe("reasoningLevelMemoryKey", () => {
+  it("combines provider with the canonical model slug", () => {
+    expect(reasoningLevelMemoryKey("codex", "gpt-5.4")).toBe("codex:gpt-5.4");
+    expect(reasoningLevelMemoryKey("claudeAgent", "claude-sonnet-4-6")).toBe(
+      "claudeAgent:claude-sonnet-4-6",
+    );
+  });
+
+  it("normalizes aliases so the key is stable across synonyms", () => {
+    expect(reasoningLevelMemoryKey("claudeAgent", "sonnet")).toBe("claudeAgent:claude-sonnet-4-6");
+    expect(reasoningLevelMemoryKey("codex", "5.3")).toBe("codex:gpt-5.3-codex");
+  });
+
+  it("returns null when the model cannot be resolved", () => {
+    expect(reasoningLevelMemoryKey("codex", "")).toBeNull();
+    expect(reasoningLevelMemoryKey("codex", "   ")).toBeNull();
+    expect(reasoningLevelMemoryKey("codex", null)).toBeNull();
+    expect(reasoningLevelMemoryKey("codex", undefined)).toBeNull();
   });
 });
 
