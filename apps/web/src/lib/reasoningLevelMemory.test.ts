@@ -1,6 +1,10 @@
+import { ProviderDriverKind } from "@t3tools/contracts";
 import { describe, expect, it } from "vitest";
 
 import { getRememberedReasoningLevel, withRememberedReasoningLevel } from "./reasoningLevelMemory";
+
+const codex = ProviderDriverKind.make("codex");
+const claudeAgent = ProviderDriverKind.make("claudeAgent");
 
 describe("getRememberedReasoningLevel", () => {
   it("returns the stored value when the key exists", () => {
@@ -10,10 +14,8 @@ describe("getRememberedReasoningLevel", () => {
         "codex:gpt-5.4": "xhigh",
       },
     };
-    expect(getRememberedReasoningLevel(settings, "claudeAgent", "claude-sonnet-4-6")).toBe(
-      "medium",
-    );
-    expect(getRememberedReasoningLevel(settings, "codex", "gpt-5.4")).toBe("xhigh");
+    expect(getRememberedReasoningLevel(settings, claudeAgent, "claude-sonnet-4-6")).toBe("medium");
+    expect(getRememberedReasoningLevel(settings, codex, "gpt-5.4")).toBe("xhigh");
   });
 
   it("normalizes aliases so lookups are stable", () => {
@@ -22,15 +24,15 @@ describe("getRememberedReasoningLevel", () => {
         "claudeAgent:claude-sonnet-4-6": "medium",
       },
     };
-    expect(getRememberedReasoningLevel(settings, "claudeAgent", "sonnet")).toBe("medium");
+    expect(getRememberedReasoningLevel(settings, claudeAgent, "sonnet")).toBe("medium");
   });
 
   it("returns null for unknown entries or empty input", () => {
     const settings = { reasoningLevelByProviderModel: {} };
-    expect(getRememberedReasoningLevel(settings, "codex", "gpt-5.4")).toBeNull();
-    expect(getRememberedReasoningLevel(settings, "codex", null)).toBeNull();
-    expect(getRememberedReasoningLevel(settings, "codex", undefined)).toBeNull();
-    expect(getRememberedReasoningLevel(settings, "codex", "")).toBeNull();
+    expect(getRememberedReasoningLevel(settings, codex, "gpt-5.4")).toBeNull();
+    expect(getRememberedReasoningLevel(settings, codex, null)).toBeNull();
+    expect(getRememberedReasoningLevel(settings, codex, undefined)).toBeNull();
+    expect(getRememberedReasoningLevel(settings, codex, "")).toBeNull();
   });
 
   it("returns null when the stored value is a blank string", () => {
@@ -39,7 +41,7 @@ describe("getRememberedReasoningLevel", () => {
         "codex:gpt-5.4": "",
       },
     };
-    expect(getRememberedReasoningLevel(settings, "codex", "gpt-5.4")).toBeNull();
+    expect(getRememberedReasoningLevel(settings, codex, "gpt-5.4")).toBeNull();
   });
 });
 
@@ -50,12 +52,7 @@ describe("withRememberedReasoningLevel", () => {
         "claudeAgent:claude-opus-4-7": "high",
       },
     };
-    const next = withRememberedReasoningLevel(
-      settings,
-      "claudeAgent",
-      "claude-sonnet-4-6",
-      "medium",
-    );
+    const next = withRememberedReasoningLevel(settings, claudeAgent, "claude-sonnet-4-6", "medium");
     expect(next).toEqual({
       "claudeAgent:claude-opus-4-7": "high",
       "claudeAgent:claude-sonnet-4-6": "medium",
@@ -69,7 +66,7 @@ describe("withRememberedReasoningLevel", () => {
         "codex:gpt-5.4": "medium",
       },
     };
-    const next = withRememberedReasoningLevel(settings, "codex", "gpt-5.4", "xhigh");
+    const next = withRememberedReasoningLevel(settings, codex, "gpt-5.4", "xhigh");
     expect(next).toEqual({
       "claudeAgent:claude-opus-4-7": "high",
       "codex:gpt-5.4": "xhigh",
@@ -79,7 +76,7 @@ describe("withRememberedReasoningLevel", () => {
   it("trims the incoming value before storing", () => {
     const next = withRememberedReasoningLevel(
       { reasoningLevelByProviderModel: {} },
-      "codex",
+      codex,
       "gpt-5.4",
       "  high  ",
     );
@@ -88,8 +85,8 @@ describe("withRememberedReasoningLevel", () => {
 
   it("returns null when the key or value cannot be derived", () => {
     const settings = { reasoningLevelByProviderModel: {} };
-    expect(withRememberedReasoningLevel(settings, "codex", "   ", "high")).toBeNull();
-    expect(withRememberedReasoningLevel(settings, "codex", "gpt-5.4", "")).toBeNull();
-    expect(withRememberedReasoningLevel(settings, "codex", "gpt-5.4", "   ")).toBeNull();
+    expect(withRememberedReasoningLevel(settings, codex, "   ", "high")).toBeNull();
+    expect(withRememberedReasoningLevel(settings, codex, "gpt-5.4", "")).toBeNull();
+    expect(withRememberedReasoningLevel(settings, codex, "gpt-5.4", "   ")).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import {
-  type ProviderKind,
+  type ProviderDriverKind,
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
   type ScopedThreadRef,
@@ -78,7 +78,7 @@ function getDescriptorStringValue(
 }
 
 function getSelectedTraits(
-  provider: ProviderKind,
+  provider: ProviderDriverKind,
   models: ReadonlyArray<ServerProviderModel>,
   model: string | null | undefined,
   prompt: string,
@@ -152,7 +152,7 @@ function getSelectedTraits(
 }
 
 function getTraitsSectionVisibility(input: {
-  provider: ProviderKind;
+  provider: ProviderDriverKind;
   models: ReadonlyArray<ServerProviderModel>;
   model: string | null | undefined;
   prompt: string;
@@ -186,7 +186,7 @@ function getTraitsSectionVisibility(input: {
 }
 
 export function shouldRenderTraitsControls(input: {
-  provider: ProviderKind;
+  provider: ProviderDriverKind;
   models: ReadonlyArray<ServerProviderModel>;
   model: string | null | undefined;
   prompt: string;
@@ -197,7 +197,7 @@ export function shouldRenderTraitsControls(input: {
 }
 
 export interface TraitsMenuContentProps {
-  provider: ProviderKind;
+  provider: ProviderDriverKind;
   models: ReadonlyArray<ServerProviderModel>;
   model: string | null | undefined;
   prompt: string;
