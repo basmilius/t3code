@@ -397,7 +397,7 @@ describe("uiStateStore pure functions", () => {
       projectOrder: [project1, project2, project3],
     });
 
-    const next = collapseAllProjects(initialState);
+    const next = collapseAllProjects(initialState, [project1, project2, project3]);
 
     expect(next.projectExpandedById).toEqual({
       [project1]: false,
@@ -424,7 +424,7 @@ describe("uiStateStore pure functions", () => {
       },
     });
 
-    const next = collapseAllProjects(initialState);
+    const next = collapseAllProjects(initialState, [project1]);
 
     expect(next.threadLastVisitedAtById).toBe(initialState.threadLastVisitedAtById);
     expect(next.threadChangedFilesExpandedById).toBe(initialState.threadChangedFilesExpandedById);
@@ -440,7 +440,7 @@ describe("uiStateStore pure functions", () => {
       },
     });
 
-    const next = collapseAllProjects(initialState);
+    const next = collapseAllProjects(initialState, [project1, project2]);
 
     expect(next).toBe(initialState);
   });
@@ -448,7 +448,7 @@ describe("uiStateStore pure functions", () => {
   it("collapseAllProjects is a no-op when there are no known projects", () => {
     const initialState = makeUiState();
 
-    const next = collapseAllProjects(initialState);
+    const next = collapseAllProjects(initialState, []);
 
     expect(next).toBe(initialState);
   });
@@ -461,16 +461,37 @@ describe("uiStateStore pure functions", () => {
       projectExpandedById: {
         [project1]: true,
       },
-      projectOrder: [project1, project2, project3],
     });
 
-    const next = collapseAllProjects(initialState);
+    const next = collapseAllProjects(initialState, [project1, project2, project3]);
 
     expect(next.projectExpandedById).toEqual({
       [project1]: false,
       [project2]: false,
       [project3]: false,
     });
+  });
+
+  it("collapseAllProjects only writes the supplied logical keys, never physical ones", () => {
+    const logicalKey = ProjectId.make("logical-1");
+    const physicalKeyA = "physical-a";
+    const physicalKeyB = "physical-b";
+    const initialState = makeUiState({
+      projectExpandedById: {
+        [logicalKey]: true,
+      },
+      // projectOrder holds physical keys; collapseAllProjects must never mix
+      // them into projectExpandedById (which is keyed by logical key).
+      projectOrder: [physicalKeyA, physicalKeyB],
+    });
+
+    const next = collapseAllProjects(initialState, [logicalKey]);
+
+    expect(next.projectExpandedById).toEqual({
+      [logicalKey]: false,
+    });
+    expect(next.projectExpandedById).not.toHaveProperty(physicalKeyA);
+    expect(next.projectExpandedById).not.toHaveProperty(physicalKeyB);
   });
 
   it("clearThreadUi removes visit state for deleted threads", () => {
@@ -651,7 +672,11 @@ describe("uiStateStore persistence round-trip", () => {
 
     let state = syncProjects(makeUiState(), [projectA, projectB, projectC]);
     state = setProjectExpanded(state, projectB.key, false);
-    state = collapseAllProjects(state);
+    state = collapseAllProjects(state, [
+      projectA.logicalKey,
+      projectB.logicalKey,
+      projectC.logicalKey,
+    ]);
     persistState(state);
 
     const persisted = JSON.parse(

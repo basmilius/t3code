@@ -898,6 +898,7 @@ interface SidebarProjectItemProps {
   suppressProjectClickForContextMenuRef: React.RefObject<boolean>;
   isManualProjectSorting: boolean;
   dragHandleProps: SortableProjectHandleProps | null;
+  collapseAllProjects: () => void;
 }
 
 const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjectItemProps) {
@@ -918,6 +919,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     suppressProjectClickForContextMenuRef,
     isManualProjectSorting,
     dragHandleProps,
+    collapseAllProjects,
   } = props;
   const threadSortOrder = useSettings<SidebarThreadSortOrder>(
     (settings) => settings.sidebarThreadSortOrder,
@@ -940,7 +942,6 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const { isMobile, setOpenMobile } = useSidebar();
   const markThreadUnread = useUiStateStore((state) => state.markThreadUnread);
   const toggleProject = useUiStateStore((state) => state.toggleProject);
-  const collapseAllProjects = useUiStateStore((state) => state.collapseAllProjects);
   const toggleThreadSelection = useThreadSelectionStore((state) => state.toggleThread);
   const rangeSelectTo = useThreadSelectionStore((state) => state.rangeSelectTo);
   const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
@@ -2696,6 +2697,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
                         }
                         isManualProjectSorting={isManualProjectSorting}
                         dragHandleProps={dragHandleProps}
+                        collapseAllProjects={collapseAllProjects}
                       />
                     )}
                   </SortableProjectItem>
@@ -2726,6 +2728,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
                 suppressProjectClickForContextMenuRef={suppressProjectClickForContextMenuRef}
                 isManualProjectSorting={isManualProjectSorting}
                 dragHandleProps={null}
+                collapseAllProjects={collapseAllProjects}
               />
             ))}
           </SidebarMenu>
@@ -3029,12 +3032,20 @@ export default function Sidebar() {
     visibleThreads,
   ]);
   const isManualProjectSorting = sidebarProjectSortOrder === "manual";
+  const sortedProjectKeys = useMemo(
+    () => sortedProjects.map((project) => project.projectKey),
+    [sortedProjects],
+  );
   const allProjectsCollapsed = useMemo(
     () =>
       sortedProjects.every(
         (project) => (projectExpandedById[project.projectKey] ?? true) === false,
       ),
     [projectExpandedById, sortedProjects],
+  );
+  const handleCollapseAllProjects = useCallback(
+    () => collapseAllProjectsAction(sortedProjectKeys),
+    [collapseAllProjectsAction, sortedProjectKeys],
   );
   const visibleSidebarThreadKeys = useMemo(
     () =>
@@ -3421,7 +3432,7 @@ export default function Sidebar() {
             attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
             projectsLength={projects.length}
             allProjectsCollapsed={allProjectsCollapsed}
-            collapseAllProjects={collapseAllProjectsAction}
+            collapseAllProjects={handleCollapseAllProjects}
           />
 
           <SidebarSeparator />
