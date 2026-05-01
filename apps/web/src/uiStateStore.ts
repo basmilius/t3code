@@ -558,10 +558,7 @@ export function setProjectExpanded(state: UiState, projectId: string, expanded: 
 
 export function collapseAllProjects(state: UiState): UiState {
   const nextExpandedById: Record<string, boolean> = {};
-  const allProjectIds = new Set([
-    ...state.projectOrder,
-    ...Object.keys(state.projectExpandedById),
-  ]);
+  const allProjectIds = new Set([...state.projectOrder, ...Object.keys(state.projectExpandedById)]);
   for (const projectId of allProjectIds) {
     nextExpandedById[projectId] = false;
   }
