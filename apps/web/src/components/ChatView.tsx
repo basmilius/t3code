@@ -3198,7 +3198,11 @@ export default function ChatView(props: ChatViewProps) {
       let rememberedReasoningLevel: { descriptorId: string; value: string } | null = null;
       if (rememberedLevel && resolvedDriverKind) {
         const providerModels = entry?.models ?? [];
-        const caps = getProviderModelCapabilities(providerModels, resolvedModel, resolvedDriverKind);
+        const caps = getProviderModelCapabilities(
+          providerModels,
+          resolvedModel,
+          resolvedDriverKind,
+        );
         const descriptors = getProviderOptionDescriptors({ caps });
         const primarySelect = descriptors.find((descriptor) => descriptor.type === "select");
         if (
