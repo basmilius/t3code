@@ -105,7 +105,7 @@ function RootRouteView() {
         <WebSocketConnectionCoordinator />
         <SlowRpcAckToastCoordinator />
         <WebSocketConnectionSurface>
-          <SidebarProvider defaultOpen>
+          <SidebarProvider className="h-dvh! min-h-0!" defaultOpen>
             <CommandPalette>
               <AppSidebarLayout>
                 <Outlet />
